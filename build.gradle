@@ -1,0 +1,53 @@
+plugins {
+    id 'java'
+    id 'checkstyle'
+    id 'org.springframework.boot' version '4.1.1'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.example'
+version = '1.0.0'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:4.1.0'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    runtimeOnly 'com.h2database:h2'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+    testImplementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter-test:4.1.0'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+// 린트: 위반이 하나라도 있으면 빌드 실패
+checkstyle {
+    toolVersion = '10.24.0'
+    configFile = file('config/checkstyle/checkstyle.xml')
+    ignoreFailures = false
+    maxWarnings = 0
+}
+
+// 린트 대상은 운영 코드(src/main)만
+tasks.named('checkstyleTest') {
+    enabled = false
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+

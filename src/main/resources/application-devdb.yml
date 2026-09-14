@@ -1,0 +1,12 @@
+# 실습용: 서버가 개발 파일 DB(.local/db/dev)를 쓴다. 서버를 꺼도 데이터가 남고 node scripts/db.mjs --env dev 로 볼 수 있다.
+# 처음 상태로 되돌리려면 서버를 끄고 ./gradlew dbReset
+spring:
+  config:
+    import: optional:file:.env[.properties]   # 접속 정보는 .env 에서 읽는다
+  datasource:
+    url: ${DB_DEV_URL}
+    username: ${DB_DEV_USER}
+    password: ${DB_DEV_PASSWORD}
+  sql:
+    init:
+      mode: never   # dbReset 으로 만든 테이블·데이터를 그대로 쓴다

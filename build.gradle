@@ -51,3 +51,61 @@ tasks.named('test') {
     useJUnitPlatform()
 }
 
+// ---------------------------------------------------------------------------
+// 실습 도구 (tools/src). DB 실행기·DB 초기화·SQL 렌더러.
+// 수강생 PC의 JDK 17 이상에서 돌도록 release 17 로 컴파일한다.
+// ---------------------------------------------------------------------------
+sourceSets {
+    tools {
+        java { srcDirs = ['tools/src'] }
+        compileClasspath += sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.runtimeClasspath
+    }
+}
+
+tasks.named('compileToolsJava') {
+    options.release = 17
+}
+
+tasks.named('checkstyleTools') {
+    enabled = false
+}
+
+def toolsJar = tasks.register('toolsJar', Jar) {
+    archiveFileName = 'shop-tools.jar'
+    destinationDirectory = layout.buildDirectory.dir('tools')
+    from sourceSets.tools.output
+}
+
+// node scripts/db.mjs 가 쓰는 실행기와 H2 드라이버를 .local/lib 에 둔다
+def dbTools = tasks.register('dbTools', Sync) {
+    group = 'shop'
+    description = 'DB 도구(DbCli)와 H2 드라이버를 .local/lib 에 준비한다'
+    from toolsJar
+    from(configurations.runtimeClasspath) { include 'h2-*.jar' }
+    into layout.projectDirectory.dir('.local/lib')
+}
+
+// 개발 DB·운영 흉내 DB를 schema.sql·data.sql 로 다시 만든다. -Pperf: 개발 DB에 대량 데이터 추가
+tasks.register('dbReset', JavaExec) {
+    group = 'shop'
+    description = '개발 DB(.local/db/dev)와 운영 흉내 DB(.local/db/prod)를 다시 만든다'
+    dependsOn dbTools
+    classpath = sourceSets.tools.runtimeClasspath
+    mainClass = 'shoptools.DbReset'
+    workingDir = projectDir
+    jvmArgs '-Dfile.encoding=UTF-8', '-Dstdout.encoding=UTF-8', '-Dstderr.encoding=UTF-8'
+    args = project.hasProperty('perf') ? ['--perf'] : []
+}
+
+// node scripts/render-sql.mjs 가 부른다
+tasks.register('renderSql', JavaExec) {
+    group = 'shop'
+    description = '매퍼 XML과 파라미터 JSON으로 실제 SQL을 렌더링한다 (node scripts/render-sql.mjs)'
+    classpath = sourceSets.tools.runtimeClasspath
+    mainClass = 'shoptools.SqlRender'
+    workingDir = projectDir
+    jvmArgs '-Dfile.encoding=UTF-8', '-Dstdout.encoding=UTF-8', '-Dstderr.encoding=UTF-8'
+    ignoreExitValue = true
+    args = project.hasProperty('renderRequest') ? ['--request', project.property('renderRequest')] : []
+}

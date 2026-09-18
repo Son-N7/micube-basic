@@ -23,7 +23,8 @@ public enum ErrorCode {
     LOT_NOT_SHIPPABLE(HttpStatus.CONFLICT, "판매 보류 중이거나 소진된 로트는 출고할 수 없습니다"),
     INSUFFICIENT_QTY(HttpStatus.CONFLICT, "로트 수량이 부족합니다"),
     LOT_NOT_HOLDABLE(HttpStatus.CONFLICT, "소진된 로트는 판매 보류할 수 없습니다"),
-    HOLD_ALREADY_EXISTS(HttpStatus.CONFLICT, "같은 사유의 판매 보류가 이미 있습니다");
+    HOLD_ALREADY_EXISTS(HttpStatus.CONFLICT, "같은 사유의 판매 보류가 이미 있습니다"),
+    NO_ACTIVE_HOLD(HttpStatus.CONFLICT, "해제할 판매 보류가 없습니다");
 
     private final HttpStatus status;
     private final String message;

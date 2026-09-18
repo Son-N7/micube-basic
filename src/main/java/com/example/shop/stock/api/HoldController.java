@@ -27,6 +27,15 @@ public class HoldController {
         this.holdService = holdService;
     }
 
+    /** 판매 보류를 해제한다. */
+    @PostMapping("/release")
+    public ApiResponse<LotResponse> release(@PathVariable String lotNo, @Valid @RequestBody ReleaseRequest request,
+            CurrentUser user) {
+        user.requireRole(Role.QC);
+        StockLot lot = holdService.releaseHold(lotNo, request.reasonCode(), request.comment(), user.userId());
+        return ApiResponse.ok(LotResponse.from(lot));
+    }
+
     /** 판매 보류를 등록한다. */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)

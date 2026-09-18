@@ -17,4 +17,12 @@ public interface StockHoldMapper {
 
     /** 한 사유의 활성 보류 건수. */
     int selectActiveHoldCount(@Param("lotNo") String lotNo, @Param("reason") HoldReason reason);
+
+    /** 로트의 활성 보류 건수 (사유 무관). */
+    int selectLotActiveHoldCount(@Param("lotNo") String lotNo);
+
+    /** 한 사유의 활성 보류를 해제한다. */
+    void updateHoldRelease(@Param("lotNo") String lotNo, @Param("reason") HoldReason reason,
+            @Param("comment") String comment, @Param("releasedAt") LocalDateTime releasedAt,
+            @Param("releasedBy") String releasedBy);
 }

@@ -43,6 +43,19 @@ public class HoldService {
         return lot.withStatus(LotStatus.HOLD);
     }
 
+    /** 판매 보류를 해제한다. 남은 활성 보류가 없으면 판매 가능(수량 0이면 소진)으로 바꾼다. */
+    @Transactional
+    public StockLot releaseHold(String lotNo, HoldReason reason, String comment, String userId) {
+        StockLot lot = getLot(lotNo);
+        if (holdMapper.selectActiveHoldCount(lotNo, reason) == 0) {
+            throw new BusinessException(ErrorCode.NO_ACTIVE_HOLD, lotNo + ", " + reason);
+        }
+        holdMapper.updateHoldRelease(lotNo, reason, comment, LocalDateTime.now(clock), userId);
+        LotStatus status = LotStatus.resolve(lot.qty(), holdMapper.selectLotActiveHoldCount(lotNo) > 0);
+        lotMapper.updateLotStatus(lotNo, status);
+        return lot.withStatus(status);
+    }
+
     private StockLot getLot(String lotNo) {
         return lotMapper.selectLotOne(lotNo)
                 .orElseThrow(() -> new BusinessException(ErrorCode.LOT_NOT_FOUND, lotNo));

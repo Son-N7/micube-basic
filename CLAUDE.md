@@ -51,6 +51,7 @@ Java 25, Spring Boot 4.1, MyBatis, H2 (MSSQL 호환 모드), Gradle (wrapper 포
 | 장치 | 막는 것 | 못 막는 것 |
 |---|---|---|
 | `.claude/hooks/protect-tests.mjs` (PreToolUse) | `.claude/protected-tests.txt`에 올린 테스트를 Edit·Write로 고치는 것 | Bash로 바꾼 파일, 사람이 편집기로 고친 파일, 목록에 없는 테스트 |
+| `.claude/hooks/check-mapper.mjs` (PostToolUse) | Edit·Write로 저장한 매퍼 XML의 C1~C3 위반 (알려서 고치게 함) | Bash로 쓴 파일, 사람이 편집기로 고친 파일 |
 | permissions (`.claude/settings.json`) | 운영 DB 명령은 확인 창, KILL·DROP·TRUNCATE가 든 명령은 거부 | 문자열만 보므로 모양을 바꾼 명령, 사람의 명령 |
 | `.claude/hooks/sql-guard.mjs` (PreToolUse) | Bash·PowerShell로 실행하는 db.mjs의 운영 DB 쓰기, 개발 DB의 위험 SQL | 다른 도구, 사람이 터미널에서 친 명령 |
 | 운영 DB 읽기 전용 계정 (`shop_ro`) | 운영 DB에 대한 모든 쓰기 (사람 포함) | - |

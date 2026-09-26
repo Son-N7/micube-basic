@@ -1,7 +1,21 @@
 {
   "permissions": {
+    "allow": [
+      "Bash(node scripts/db.mjs --env dev *)",
+      "Bash(node scripts/render-sql.mjs *)"
+    ],
+    "ask": [
+      "Bash(node scripts/db.mjs --env prod *)",
+      "PowerShell(node scripts/db.mjs --env prod *)"
+    ],
     "deny": [
-      "Read(/prompts/**)"
+      "Read(/prompts/**)",
+      "Bash(*KILL*)",
+      "Bash(*DROP*)",
+      "Bash(*TRUNCATE*)",
+      "PowerShell(*KILL*)",
+      "PowerShell(*DROP*)",
+      "PowerShell(*TRUNCATE*)"
     ]
   },
   "hooks": {
@@ -10,6 +24,12 @@
         "matcher": "Edit|Write|MultiEdit",
         "hooks": [
           { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/protect-tests.mjs\"" }
+        ]
+      },
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/sql-guard.mjs\"" }
         ]
       }
     ]

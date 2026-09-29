@@ -16,51 +16,37 @@
     </constructor>
   </resultMap>
 
-  <!-- 구 재고관리 시스템 화면 쿼리를 그대로 옮김 (2025-11). 판매 가능분과 보류분을 따로 구해 합친다 -->
+  <sql id="lotGroupColumns">
+    p.product_code, p.product_name, p.category, l.lot_no, l.qty, l.status, l.expiry_date
+  </sql>
+
+  <!-- 재고가 남은 로트(판매 가능·보류)와 활성 보류 건수, 마지막 해제 일시 -->
   <select id="selectStockSummaryList" resultMap="stockSummaryMap">
-    SELECT *
-      FROM (
-            SELECT p.product_code, p.product_name, p.category, l.lot_no, l.qty, l.status, l.expiry_date,
-                   COUNT(h.hold_id) AS active_hold_count,
-                   (SELECT MAX(h2.released_at)
-                      FROM stock_hold h2 WITH (NOLOCK)
-                     WHERE h2.lot_no = l.lot_no) AS last_released_at
-              FROM stock_lot l WITH (NOLOCK)
-              JOIN product p ON p.product_code = l.product_code
-              LEFT JOIN stock_hold h WITH (NOLOCK) ON h.lot_no = l.lot_no AND h.released_at IS NULL
-             WHERE l.status = 'AVAILABLE'
-            <if test="category != null and category != ''">
-               AND p.category = #{category}
-            </if>
-            <if test="productCode != null and productCode != ''">
-               AND p.product_code LIKE CONCAT(#{productCode}, '%')
-            </if>
-            <if test="year != null and month != null">
-               AND YEAR(l.expiry_date) = #{year} AND MONTH(l.expiry_date) = #{month}
-            </if>
-             GROUP BY p.product_code, p.product_name, p.category, l.lot_no, l.qty, l.status, l.expiry_date
-            UNION ALL
-            SELECT p.product_code, p.product_name, p.category, l.lot_no, l.qty, l.status, l.expiry_date,
-                   COUNT(h.hold_id) AS active_hold_count,
-                   (SELECT MAX(h2.released_at)
-                      FROM stock_hold h2 WITH (NOLOCK)
-                     WHERE h2.lot_no = l.lot_no) AS last_released_at
-              FROM stock_lot l WITH (NOLOCK)
-              JOIN product p ON p.product_code = l.product_code
-              LEFT JOIN stock_hold h WITH (NOLOCK) ON h.lot_no = l.lot_no AND h.released_at IS NULL
-             WHERE l.status = 'HOLD'
-            <if test="category != null and category != ''">
-               AND p.category = #{category}
-            </if>
-            <if test="productCode != null and productCode != ''">
-               AND p.product_code LIKE CONCAT(#{productCode}, '%')
-            </if>
-            <if test="year != null and month != null">
-               AND YEAR(l.expiry_date) = #{year} AND MONTH(l.expiry_date) = #{month}
-            </if>
-             GROUP BY p.product_code, p.product_name, p.category, l.lot_no, l.qty, l.status, l.expiry_date
-           ) t
-     ORDER BY t.category, t.product_code, t.expiry_date, t.lot_no
+    SELECT <include refid="lotGroupColumns"/>,
+           COUNT(h.hold_id) AS active_hold_count,
+           (SELECT MAX(h2.released_at)
+              FROM stock_hold h2 WITH (NOLOCK)
+             WHERE h2.lot_no = l.lot_no) AS last_released_at
+      FROM stock_lot l WITH (NOLOCK)
+      JOIN product p WITH (NOLOCK) ON p.product_code = l.product_code
+      <!-- 활성 보류만 붙인다. 이 조건을 WHERE로 옮기면 해제 이력만 있는 로트가 빠진다 -->
+      LEFT JOIN stock_hold h WITH (NOLOCK) ON h.lot_no = l.lot_no AND h.released_at IS NULL
+     WHERE l.status IN ('AVAILABLE', 'HOLD')
+    <if test="category != null and category != ''">
+       AND p.category = #{category}
+    </if>
+    <if test="productCode != null and productCode != ''">
+       AND p.product_code LIKE CONCAT(#{productCode}, '%')
+    </if>
+    <if test="year != null and month != null">
+       <!-- 범위 조건: 소비기한 인덱스를 쓸 수 있다 (YEAR/MONTH 함수를 씌우면 못 씀) -->
+       <bind name="monthStart" value="@java.time.LocalDate@of(year, month, 1)"/>
+       <bind name="nextMonthStart" value="monthStart.plusMonths(1)"/>
+       AND l.expiry_date &gt;= #{monthStart}
+       AND l.expiry_date &lt; #{nextMonthStart}
+    </if>
+     GROUP BY <include refid="lotGroupColumns"/>
+     ORDER BY p.category, p.product_code, l.expiry_date, l.lot_no
   </select>
 
 </mapper>

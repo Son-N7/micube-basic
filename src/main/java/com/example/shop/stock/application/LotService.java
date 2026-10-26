@@ -3,8 +3,11 @@ package com.example.shop.stock.application;
 import com.example.shop.common.BusinessException;
 import com.example.shop.common.ErrorCode;
 import com.example.shop.product.application.ProductService;
+import com.example.shop.stock.domain.HoldReason;
 import com.example.shop.stock.domain.LotStatus;
+import com.example.shop.stock.domain.StockHold;
 import com.example.shop.stock.domain.StockLot;
+import com.example.shop.stock.mapper.StockHoldMapper;
 import com.example.shop.stock.mapper.StockLotMapper;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -14,17 +17,20 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 입고 로트 서비스: 입고, 출고, 로트 조회.
+ * 입고 로트 서비스: 입고, 출고, 판매 보류, 로트 조회.
  */
 @Service
 public class LotService {
 
     private final StockLotMapper lotMapper;
+    private final StockHoldMapper holdMapper;
     private final ProductService productService;
     private final Clock clock;
 
-    public LotService(StockLotMapper lotMapper, ProductService productService, Clock clock) {
+    public LotService(StockLotMapper lotMapper, StockHoldMapper holdMapper, ProductService productService,
+            Clock clock) {
         this.lotMapper = lotMapper;
+        this.holdMapper = holdMapper;
         this.productService = productService;
         this.clock = clock;
     }
@@ -54,6 +60,21 @@ public class LotService {
         LotStatus status = LotStatus.resolve(remaining, false);
         lotMapper.updateLotQtyAndStatus(lotNo, remaining, status);
         return lot.withQtyAndStatus(remaining, status);
+    }
+
+    /** 판매 보류를 건다. 소진 로트는 보류할 수 없고, 같은 사유의 활성 보류가 있으면 거부한다. 수량은 바꾸지 않는다. */
+    @Transactional
+    public StockLot hold(String lotNo, HoldReason reason, String comment, String userId) {
+        StockLot lot = getLot(lotNo);
+        if (lot.status() == LotStatus.SOLD_OUT) {
+            throw new BusinessException(ErrorCode.LOT_NOT_HOLDABLE, lotNo + ", " + lot.status());
+        }
+        if (holdMapper.selectActiveHoldCount(lotNo, reason) > 0) {
+            throw new BusinessException(ErrorCode.HOLD_ALREADY_EXISTS, lotNo + ", " + reason);
+        }
+        holdMapper.insertHold(new StockHold(lotNo, reason, comment, LocalDateTime.now(clock), userId));
+        lotMapper.updateLotStatus(lotNo, LotStatus.HOLD);
+        return lot.withStatus(LotStatus.HOLD);
     }
 
     /** 상품의 재고 로트(판매 가능·판매 보류)를 소비기한 빠른 순으로 조회한다. 상품이 없으면 404. */

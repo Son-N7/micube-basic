@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 입고·출고·로트 조회 API.
+ * 입고·출고·판매 보류·로트 조회 API.
  */
 @RestController
 @RequestMapping("/api/lots")
@@ -52,6 +52,16 @@ public class LotController {
             CurrentUser user) {
         user.requireRole(Role.WAREHOUSE);
         StockLot lot = lotService.ship(lotNo, request.qty());
+        return ApiResponse.ok(LotResponse.from(lot));
+    }
+
+    /** 판매 보류를 건다. 사유별로 한 건씩 기록한다. */
+    @PostMapping("/{lotNo}/holds")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<LotResponse> hold(@PathVariable String lotNo, @Valid @RequestBody HoldRequest request,
+            CurrentUser user) {
+        user.requireRole(Role.QC);
+        StockLot lot = lotService.hold(lotNo, request.reasonCode(), request.comment(), user.userId());
         return ApiResponse.ok(LotResponse.from(lot));
     }
 }
